@@ -98,34 +98,36 @@ ElectroDB uses `@aws-sdk/lib-dynamodb` under the hood, so the credentials (`acce
 - Routes under `app/` (App Router) for: daily summary, history, entry listing for a day, goal settings — mapping 1:1 to the access patterns in section 2.3.
 - No end-user authentication specified yet (out of scope, see functional document, section 8).
 
-## 6. Code organization: `home-expenses` pattern to replicate
+## 6. Code organization: `total-budget-tracker` pattern to replicate
 
-`home-expenses` (sibling repo, same author) follows a clean/hexagonal architecture with a very clear layer separation, which is worth replicating in Baco-Fit even though the project is smaller. Here's how it's organized there:
+`total-budget-tracker` (sibling repo, same author, the newer and more modern evolution of `home-expenses`) follows the same clean/hexagonal spirit for the backend but with a leaner setup: a single backend workspace instead of two, and a simplified View/ViewModel pattern on the frontend with no separate Model file. This is the version worth replicating in Baco-Fit, not the older `home-expenses` layout.
 
-### Monorepo with npm workspaces
+### Monorepo with a single backend workspace
 
-- The root `package.json` declares `"workspaces": ["domain", "services"]`.
-- `domain/`: independent package (`home-expenses-domain`) with all the business logic, compiled from TypeScript to JS (`domain/lib`) before the app consumes it. Build: `npm run build:domain && npm run build:next`.
-- `services/`: package with HTTP (`fetch`) clients that the UI uses to talk to the app's own `/api` routes — they do **not** talk to the `domain` layer directly, only to the route handlers.
-- The root (Next.js) app imports `domain` as a workspace dependency (`"home-expenses-domain": "1"`) and uses `services` from React components/hooks.
+- The root `package.json` declares `"workspaces": ["backend"]` — there's no separate `services` package.
+- `backend/`: independent package (`total-budget-tracker-backend`) with all the business logic, compiled from TypeScript to JS (`backend/lib`) before the app consumes it. Build: `npm run build:be && next build`.
+- The frontend does **not** have a `services/` layer: React hooks under `hooks/` (e.g. `useListExpenses.js`, `useSaveExpense.js`) call `fetch` directly against the app's own `/api` routes. There's one hook per use case/endpoint, which plays the role `services/` used to play, without a dedicated package for it.
+- The root (Next.js) app imports `backend` as a workspace dependency (`"total-budget-tracker-backend": "^1.0.0"`), used only from `app/api/*/route.js`.
 
-### `domain` layer (business logic)
+### `backend` layer (business logic)
 
-Inside `domain/src/`:
+Inside `backend/src/`:
 
-- **`domain/models/`**: entities (e.g. `Expense.ts`, `Guest.ts`). Plain classes with `fromDto(dto)` / `fromPrimitives(data)` methods to build the entity from different sources, and `flatten()` to turn it back into a serializable plain object. They encapsulate conversion rules, with no infrastructure dependencies.
-- **`domain/services/`**: domain logic that doesn't belong to a single entity (e.g. `InvoiceService`, `TimetableService`).
-- **`application/<feature>/<verb><Entity>UseCase.ts`**: one use case = one class with a single public `execute(...)` method. Decorated with `@injectable()`, receives its dependencies (repositories) via constructor with `@inject(Types.Repository.X)`. Example (`addExpenseUseCase.ts`): converts the DTO to an entity (`Expense.fromDto`) and delegates to the repository.
-- **`repositories/`**: infrastructure adapters (`ExpenseRepository`, `GuestRepository` over DynamoDB via `DbAdapterFactory`; `PdfReader`, `ExpenseParser` for other integrations). They are the only layer that knows the database details.
-- **`di.ts` + `types.ts`**: dependency injection container using `inversify`. `types.ts` defines symbols (`Types.Repository.Expense`, `Types.UseCase.AddExpense`...); `di.ts` does `DI.bind(Types.X).to(ClassY)`.
-- **`index.ts`**: the package's public entry point — exports `DI`, `Types`, `config`, and in some cases already-built use case instances.
+- **`domain/models/`**: entities (e.g. `Expense.ts`, `Report.ts`, `Category.ts`, `DateRange.ts`, `ExpenseGroup.ts`). Plain classes/types that encapsulate the domain's shape and conversion rules, with no infrastructure dependencies.
+- **`domain/services/`**: domain logic that doesn't belong to a single entity (e.g. `ReportService`).
+- **`application/<Verb><Entity>UseCase.ts`**: one use case = one class with a single public `execute(...)` method. Decorated with `@injectable()`, receives its dependencies (repositories) via constructor with `@inject(Types.Repository.X)`. Examples: `SaveDocumentUseCase`, `CreateReportUseCase`, `ConsolidateReportUseCase`.
+- **`infrastructure/`**: adapters per entity (`ExpenseRepository`, `ReportRepository`, `CategoryRepository`, `DocumentRepository` for Excel/BBVA parsing) over DynamoDB. They are the only layer that knows the database details.
+- **`types.ts`**: dependency injection symbols (`Types.Repository.Expense`, `Types.UseCase.CreateReport`...), used by `inversify`.
+- **`index.ts`**: the package's composition root — registers every binding (`DI.bind(Types.X).to(ClassY)`, around 25 of them) and exports `DI`, `Types`, and the use case instances the API routes consume.
+
+Known weak point worth avoiding when copying this layer into Baco-Fit: `backend/tsconfig.json` has `strict: false` (only `strictNullChecks` on), and there are explicit `any`s in some repositories (e.g. `private client: any`). Baco-Fit should keep `strict: true` instead of inheriting this.
 
 ### Thin API routes
 
 Each `app/api/<resource>/route.js` is deliberately thin: it resolves the use case from the DI container and translates the response, with no logic of its own.
 
 ```javascript
-import {DI, Types} from 'home-expenses-domain'
+import {DI, Types} from 'total-budget-tracker-backend'
 import {NextResponse} from 'next/server'
 
 export async function POST(request) {
@@ -136,26 +138,36 @@ export async function POST(request) {
 }
 ```
 
-### MVVM in views
+One thing *not* to copy from `total-budget-tracker`: none of its routes or hooks have error handling — no `try/catch` in the route handlers, no `response.ok` checks in the hooks. Baco-Fit should add that even while keeping the rest of the pattern.
 
-UI pages are split into three files: `XPage.view.js` (pure JSX), `XPage.viewModel.js` (state and handlers, uses hooks over `services/`), `XPage.model.js` (data shape). The `viewModel` is the one that calls `services/` (not the `domain` layer), manages `useState`/`useEffect`, and exposes handlers to the view.
+### View + ViewModel in the UI (no separate Model file)
+
+`total-budget-tracker` simplifies the three-file MVVM split down to two files plus boilerplate, consistently across `components/` and `views/`:
+
+- `<name>.js` — pure JSX (the view).
+- `<name>.viewModel.js` — a hook with all state, effects and handlers; it's the one calling the `hooks/` fetch wrappers (not the `backend` layer directly).
+- `index.js` — the public export.
+- `index.module.css` — CSS Modules for styling (mixed with MUI's `sx` prop depending on the component; Baco-Fit should pick one of the two consistently instead of mixing them).
+
+There's no `.model.js` file: the data shape lives implicitly in the DTOs passed between hook and view. Simpler than the three-file `home-expenses` version, and enough for Baco-Fit's forms.
 
 ### Build, test and lint
 
-- Two-step build: `domain` is compiled first (TypeScript → `lib/`), then Next.js.
-- Tests with Jest, `NODE_OPTIONS=--experimental-vm-modules` to support ESM.
-- Centralized lint/formatting with `@s-ui/lint` (shared eslint + prettier + stylelint).
+- Two-step build: `backend` is compiled first (TypeScript → `lib/`), then Next.js — same idea as `home-expenses`'s `domain` build step.
+- **Unlike `home-expenses`, `total-budget-tracker` currently has no tests at all** (no Jest/Vitest, no `*.test.*` files) and no CI pipeline (no `.github/workflows`). This is a regression, not an improvement, and should not be copied into Baco-Fit — Baco-Fit should keep real Jest coverage over its `application`/`domain` layer plus a basic CI workflow (lint + test + build), since that layer is cheap to test in isolation.
+- Centralized lint/formatting with `@s-ui/lint` (shared eslint + prettier + stylelint) — same as `home-expenses`.
 - No `vercel.json`: "zero-config" deployment on Vercel, auto-detected as a Next.js project.
 
 ### How this translates to Baco-Fit
 
-Baco-Fit is much smaller (one write endpoint, four read views), so replicating the full pattern as-is would be over-engineering at some points. The following is proposed:
+Baco-Fit is much smaller (one write endpoint, four read views), and the `total-budget-tracker` pattern is already close to the right size for it. The following is proposed:
 
-- **Yes, from the start**: the `domain/models`, `application/<use case>`, `repositories/` layer separation inside a `domain/` folder in the repo itself (no need for it to be a separate npm workspace since there's no second consumer of the package). Planned use cases: `AddEntriesUseCase`, `GetDailySummaryUseCase`, `GetHistoryUseCase`, `GetUserGoalUseCase`, `SetUserGoalUseCase`.
-- **Yes, from the start**: thin `app/api/.../route.ts` routes, which only resolve a use case and return `NextResponse.json`, same as the `expenses` example.
-- **Yes, from the start**: a dedicated repository per ElectroDB entity (`CalorieEntryRepository`, `UserConfigRepository`) as the only layer that knows the ElectroDB `schema` — equivalent to `ExpenseRepository`/`DbAdapterFactory`.
-- **To be assessed later, not upfront**: the `inversify` container + `di.ts`/`types.ts`. With 4-5 use cases and a single consumer (the Next.js routes themselves), instantiating use cases directly (`new AddEntriesUseCase(new CalorieEntryRepository())`) is simpler and still allows swapping implementations in tests. `inversify` can be introduced the day the number of use cases/repositories grows enough that manual injection becomes cumbersome.
-- **Not applicable yet**: the MVVM view pattern and separate npm workspaces (`domain`/`services` as independent packages), because Baco-Fit doesn't have (for now) complex UI forms or a second consumer of the domain outside the app itself.
+- **Yes, from the start**: the `domain/models`, `application/<use case>`, `infrastructure/` layer separation inside a `domain/` folder in the repo itself — matching `total-budget-tracker`'s single-workspace shape, no need for it to be a separate npm workspace since there's no second consumer of the package. Planned use cases: `AddEntriesUseCase`, `GetDailySummaryUseCase`, `GetHistoryUseCase`, `GetUserGoalUseCase`, `SetUserGoalUseCase`.
+- **Yes, from the start**: thin `app/api/.../route.ts` routes, which only resolve a use case and return `NextResponse.json`, same as the example above — but *with* `try/catch` and proper error responses, unlike `total-budget-tracker`.
+- **Yes, from the start**: a dedicated repository per ElectroDB entity (`CalorieEntryRepository`, `UserConfigRepository`) as the only layer that knows the ElectroDB `schema` — equivalent to `ExpenseRepository`/`ReportRepository`.
+- **Yes, from the start, unlike `total-budget-tracker`**: `strict: true` in `tsconfig.json` and real test coverage (Jest) over `domain`/`application`, plus a minimal CI workflow. These are exactly the gaps found in `total-budget-tracker` and shouldn't be repeated.
+- **To be assessed later, not upfront**: the `inversify` container + `types.ts`. With 4-5 use cases and a single consumer (the Next.js routes themselves), instantiating use cases directly (`new AddEntriesUseCase(new CalorieEntryRepository())`) is simpler and still allows swapping implementations in tests. `inversify` can be introduced the day the number of use cases/repositories grows enough that manual injection becomes cumbersome — this is roughly the point `total-budget-tracker` is already past, with ~25 bindings.
+- **Not applicable yet**: separate npm workspaces for the domain layer, because Baco-Fit doesn't have (for now) a second consumer of the domain outside the app itself — `total-budget-tracker` itself no longer splits into two workspaces either, so there's nothing being skipped here that the reference project still does.
 
 ## 7. Out of scope for this architecture
 
