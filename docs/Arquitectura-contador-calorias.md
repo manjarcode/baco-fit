@@ -157,7 +157,7 @@ Baco-Fit es mucho más pequeño (un endpoint de escritura, cuatro vistas de lect
 - **A valorar más adelante, no de entrada**: el contenedor de `inversify` + `di.ts`/`types.ts`. Con 4-5 casos de uso y un solo consumidor (las propias rutas de Next.js), instanciar los casos de uso directamente (`new AddEntriesUseCase(new CalorieEntryRepository())`) es más simple y sigue permitiendo swap de implementación en tests. Se puede introducir `inversify` el día que el número de casos de uso/repositorios crezca lo suficiente para que la inyección manual se vuelva incómoda.
 - **No aplica todavía**: el patrón MVVM de vistas y los workspaces npm separados (`domain`/`services` como paquetes independientes), porque Baco-Fit no tiene (de momento) formularios complejos de UI ni un segundo consumidor del dominio fuera de la propia app.
 
-## 6ter. Fuera de alcance de esta arquitectura
+## 8. Fuera de alcance de esta arquitectura
 
 - Separación de entornos (dev/prod): una única tabla, un único entorno.
 - Índices secundarios (GSI/LSI): no son necesarios con el diseño de SK propuesto.
