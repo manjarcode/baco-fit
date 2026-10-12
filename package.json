@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "electrodb": "^3.9.3",
     "next": "16.4.0",
     "react": "19.3.0",
     "react-dom": "19.3.0"
