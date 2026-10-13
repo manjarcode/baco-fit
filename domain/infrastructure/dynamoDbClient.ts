@@ -1,6 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 
-export const TABLE_NAME = 'calorie_app'
+export const TABLE_NAME = 'baco-fit'
 
 export const dynamoDbClient = new DynamoDBClient({
   region: process.env.DB_REGION,

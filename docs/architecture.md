@@ -16,7 +16,7 @@ A design with two simple partition-key tables resolved with `scan()` was discard
 
 ### 2.1 Table
 
-- **Name**: `calorie_app` (tentative name).
+- **Name**: `baco-fit`.
 - **Partition key (PK)**: `telegram_user_id` (string).
 - **Sort key (SK)**: composite string, format depends on item type (see 2.2).
 
