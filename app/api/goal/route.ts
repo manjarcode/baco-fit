@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import GetUserGoalUseCase from '../../../domain/application/GetUserGoalUseCase'
-import SetUserGoalUseCase from '../../../domain/application/SetUserGoalUseCase'
-import UserGoalRepository from '../../../domain/infrastructure/userGoal/UserGoalRepository'
+import { buildGetUserGoalUseCase, buildSetUserGoalUseCase } from '../../../domain/composition'
 import Macros from '../../../domain/models/Macros'
 
 interface SetGoalPayload {
@@ -39,7 +37,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const useCase = new GetUserGoalUseCase(new UserGoalRepository())
+    const useCase = buildGetUserGoalUseCase()
     const goal = await useCase.execute(userId)
 
     return NextResponse.json({ goal })
@@ -61,7 +59,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
-    const useCase = new SetUserGoalUseCase(new UserGoalRepository())
+    const useCase = buildSetUserGoalUseCase()
     await useCase.execute(body.userId, body.calorieGoal, body.macroGoals)
 
     return NextResponse.json({ success: true })

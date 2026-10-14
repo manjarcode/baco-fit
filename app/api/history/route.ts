@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import GetHistoryUseCase from '../../../domain/application/GetHistoryUseCase'
-import CalorieEntryRepository from '../../../domain/infrastructure/calorieEntries/CalorieEntryRepository'
+import { buildGetHistoryUseCase } from '../../../domain/composition'
 
 export async function GET(request: NextRequest) {
   const apiKey = request.headers.get('x-api-key')
@@ -17,7 +16,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const useCase = new GetHistoryUseCase(new CalorieEntryRepository())
+    const useCase = buildGetHistoryUseCase()
     const entries = await useCase.execute(userId, startDate, endDate)
 
     return NextResponse.json({ entries })

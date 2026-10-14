@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import AddEntriesUseCase, { FoodInput } from '../../../domain/application/AddEntriesUseCase'
-import CalorieEntryRepository from '../../../domain/infrastructure/calorieEntries/CalorieEntryRepository'
+import { FoodInput } from '../../../domain/application/AddEntriesUseCase'
+import { buildAddEntriesUseCase } from '../../../domain/composition'
 import Macros from '../../../domain/models/Macros'
 
 interface FoodPayload {
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       lowConfidenceReason: food.low_confidence_reason
     }))
 
-    const useCase = new AddEntriesUseCase(new CalorieEntryRepository())
+    const useCase = buildAddEntriesUseCase()
     await useCase.execute(body.telegram_user_id, body.date, body.category, foods)
 
     return NextResponse.json({ success: true })

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import GetDailySummaryUseCase from '../../../domain/application/GetDailySummaryUseCase'
-import CalorieEntryRepository from '../../../domain/infrastructure/calorieEntries/CalorieEntryRepository'
-import UserGoalRepository from '../../../domain/infrastructure/userGoal/UserGoalRepository'
+import { buildGetDailySummaryUseCase } from '../../../domain/composition'
 
 export async function GET(request: NextRequest) {
   const apiKey = request.headers.get('x-api-key')
@@ -17,7 +15,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const useCase = new GetDailySummaryUseCase(new CalorieEntryRepository(), new UserGoalRepository())
+    const useCase = buildGetDailySummaryUseCase()
     const summary = await useCase.execute(userId, date)
 
     return NextResponse.json(summary)
