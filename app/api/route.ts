@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
-  const apiKey = request.headers.get('x-api-key')
+  const apiKey = request.headers.get('x-api-key') ?? request.nextUrl.searchParams.get('apiKey')
   if (!apiKey || apiKey !== process.env.ENTRIES_API_KEY) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
