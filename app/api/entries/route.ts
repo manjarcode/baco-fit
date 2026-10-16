@@ -1,22 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { FoodInput } from '../../../domain/application/AddEntriesUseCase'
 import { buildAddEntriesUseCase } from '../../../domain/composition'
-import Macros from '../../../domain/models/Macros'
 
-interface FoodPayload {
-  name: string
-  quantity: string
+interface ItemPayload {
+  food: string
+  gr: number
   calories: number
-  macros: Macros
-  confidence: number
-  low_confidence_reason?: string
+  proteins: number
+  carbs: number
+  fats: number
+  certainty: number
+  certainty_reason?: string
 }
 
 interface EntriesPayload {
-  telegram_user_id: string
+  userId: string | number
   date: string
   category: string
-  foods: FoodPayload[]
+  items: ItemPayload[]
 }
 
 function isValidPayload(body: unknown): body is EntriesPayload {
@@ -24,11 +25,11 @@ function isValidPayload(body: unknown): body is EntriesPayload {
   const payload = body as Record<string, unknown>
 
   return (
-    typeof payload.telegram_user_id === 'string' &&
+    (typeof payload.userId === 'string' || typeof payload.userId === 'number') &&
     typeof payload.date === 'string' &&
     typeof payload.category === 'string' &&
-    Array.isArray(payload.foods) &&
-    payload.foods.length > 0
+    Array.isArray(payload.items) &&
+    payload.items.length > 0
   )
 }
 
@@ -45,17 +46,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid payload' }, { status: 400 })
     }
 
-    const foods: FoodInput[] = body.foods.map(food => ({
-      name: food.name,
-      quantity: food.quantity,
-      calories: food.calories,
-      macros: food.macros,
-      confidence: food.confidence,
-      lowConfidenceReason: food.low_confidence_reason
+    const foods: FoodInput[] = body.items.map(item => ({
+      name: item.food,
+      quantity: `${item.gr}g`,
+      calories: item.calories,
+      macros: { protein: item.proteins, fat: item.fats, carbs: item.carbs },
+      confidence: item.certainty,
+      lowConfidenceReason: item.certainty_reason
     }))
 
     const useCase = buildAddEntriesUseCase()
-    await useCase.execute(body.telegram_user_id, body.date, body.category, foods)
+    await useCase.execute(String(body.userId), body.date, body.category, foods)
 
     return NextResponse.json({ success: true })
   } catch {
