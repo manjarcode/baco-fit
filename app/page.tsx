@@ -2,7 +2,6 @@ import { Fragment, Suspense } from 'react'
 import { connection } from 'next/server'
 import { buildGetDailySummaryUseCase } from '../domain/composition'
 import CalorieEntry from '../domain/models/CalorieEntry'
-import styles from './page.module.css'
 
 async function todayIsoDate(): Promise<string> {
   await connection()
@@ -37,47 +36,53 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
 
   return (
     <>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Resumen diario</h1>
-        <span className={styles.date}>{date}</span>
+      <div className="flex items-baseline justify-between gap-2">
+        <h1 className="text-2xl font-semibold">Resumen diario</h1>
+        <span className="text-sm opacity-60">{date}</span>
       </div>
 
-      <section className={styles.caloriesCard}>
-        <span className={styles.caloriesLabel}>Calorías</span>
-        <span className={styles.caloriesValue}>
+      <section className="flex flex-col gap-1 rounded-xl bg-black/5 p-4 dark:bg-white/5">
+        <span className="text-base opacity-70">Calorías</span>
+        <span className="text-4xl font-semibold">
           {summary.totalCalories}
-          {summary.goal && <span className={styles.caloriesGoal}> / {summary.goal.calorieGoal}</span>}
+          {summary.goal && (
+            <span className="text-lg font-normal opacity-60"> / {summary.goal.calorieGoal}</span>
+          )}
         </span>
       </section>
 
       <section>
-        <h2 className={styles.sectionTitle}>Entradas</h2>
+        <h2 className="mb-2 text-base font-semibold opacity-80">Entradas</h2>
         {summary.entries.length === 0 ? (
-          <p className={styles.emptyState}>Sin entradas para esta fecha.</p>
+          <p className="text-base opacity-60">Sin entradas para esta fecha.</p>
         ) : (
-          <table className={styles.entriesTable}>
+          <table className="w-full border-collapse">
             <tbody>
               {groupedEntries.map(([category, entries]) => (
                 <Fragment key={category}>
-                  <tr className={styles.categoryRow}>
-                    <td colSpan={2}>
-                      <span className={styles.categoryTag}>{category}</span>
+                  <tr>
+                    <td colSpan={2} className="pt-3">
+                      <span className="inline-block rounded-full bg-black/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide dark:bg-white/10">
+                        {category}
+                      </span>
                     </td>
                   </tr>
                   {entries.map(entry => (
-                    <tr key={entry.id} className={styles.entryRow}>
-                      <td>
-                        <span className={styles.entryName}>
+                    <tr key={entry.id}>
+                      <td className="w-full py-1.5 pl-3 align-top text-base">
+                        <span className="block">
                           {entry.name}
                           {entry.confidence < 70 && (
-                            <span className={styles.lowConfidence} title="Confianza baja">
+                            <span className="ml-1" title="Confianza baja">
                               ⚠️
                             </span>
                           )}
                         </span>
-                        <span className={styles.entryMeta}>{entry.quantity}</span>
+                        <span className="text-sm opacity-60">{entry.quantity}</span>
                       </td>
-                      <td className={styles.entryCalories}>{entry.calories} kcal</td>
+                      <td className="py-1.5 pl-3 align-top text-sm whitespace-nowrap text-right opacity-80">
+                        {entry.calories} kcal
+                      </td>
                     </tr>
                   ))}
                 </Fragment>
@@ -88,20 +93,20 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
       </section>
 
       <section>
-        <h2 className={styles.sectionTitle}>Macros</h2>
-        <table className={styles.macrosTable}>
+        <h2 className="mb-2 text-base font-semibold opacity-80">Macros</h2>
+        <table className="w-full border-collapse text-center">
           <thead>
             <tr>
-              <th>Proteínas</th>
-              <th>Grasa</th>
-              <th>Carbohidratos</th>
+              <th className="pb-1.5 text-sm font-semibold opacity-70">Proteínas</th>
+              <th className="pb-1.5 text-sm font-semibold opacity-70">Grasa</th>
+              <th className="pb-1.5 text-sm font-semibold opacity-70">Carbohidratos</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td>{round2(summary.totalMacros.protein)}gr</td>
-              <td>{round2(summary.totalMacros.fat)}gr</td>
-              <td>{round2(summary.totalMacros.carbs)}gr</td>
+              <td className="pt-0.5 text-lg font-semibold">{round2(summary.totalMacros.protein)}gr</td>
+              <td className="pt-0.5 text-lg font-semibold">{round2(summary.totalMacros.fat)}gr</td>
+              <td className="pt-0.5 text-lg font-semibold">{round2(summary.totalMacros.carbs)}gr</td>
             </tr>
           </tbody>
         </table>
@@ -112,7 +117,7 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
 
 export default function Home({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   return (
-    <main className={styles.main}>
+    <main className="mx-auto flex max-w-[480px] flex-col gap-6 p-4">
       <Suspense fallback={<p>Cargando…</p>}>
         <Summary searchParams={searchParams} />
       </Suspense>
