@@ -1,4 +1,5 @@
 import { Fragment, Suspense } from 'react'
+import Link from 'next/link'
 import { connection } from 'next/server'
 import { buildGetDailySummaryUseCase } from '../domain/composition'
 import CalorieEntry from '../domain/models/CalorieEntry'
@@ -6,6 +7,12 @@ import CalorieEntry from '../domain/models/CalorieEntry'
 async function todayIsoDate(): Promise<string> {
   await connection()
   return new Date().toISOString().slice(0, 10)
+}
+
+function shiftIsoDate(isoDate: string, days: number): string {
+  const date = new Date(`${isoDate}T00:00:00Z`)
+  date.setUTCDate(date.getUTCDate() + days)
+  return date.toISOString().slice(0, 10)
 }
 
 function round2(value: number): string {
@@ -26,27 +33,53 @@ function groupByCategory(entries: CalorieEntry[]): [string, CalorieEntry[]][] {
 }
 
 async function Summary({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+  const today = await todayIsoDate()
   const { date: dateParam } = await searchParams
-  const date = dateParam ?? (await todayIsoDate())
+  const date = dateParam ?? today
   const userId = process.env.WEB_USER_ID as string
 
   const useCase = buildGetDailySummaryUseCase()
   const summary = await useCase.execute(userId, date)
   const groupedEntries = groupByCategory(summary.entries)
+  const previousDate = shiftIsoDate(date, -1)
+  const nextDate = shiftIsoDate(date, 1)
+  const isToday = date >= today
 
   return (
     <>
       <div className="flex items-baseline justify-between gap-2">
         <h1 className="text-2xl font-semibold">Resumen diario</h1>
-        <span className="text-sm opacity-60">{date}</span>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/?date=${previousDate}`}
+            aria-label="Día anterior"
+            className="rounded-full px-2 py-1 text-sm opacity-70 hover:bg-primary/10 hover:text-primary hover:opacity-100"
+          >
+            ←
+          </Link>
+          <span className="text-sm opacity-60">{date}</span>
+          {isToday ? (
+            <span aria-hidden="true" className="rounded-full px-2 py-1 text-sm opacity-30">
+              →
+            </span>
+          ) : (
+            <Link
+              href={`/?date=${nextDate}`}
+              aria-label="Día siguiente"
+              className="rounded-full px-2 py-1 text-sm opacity-70 hover:bg-primary/10 hover:text-primary hover:opacity-100"
+            >
+              →
+            </Link>
+          )}
+        </div>
       </div>
 
-      <section className="flex flex-col gap-1 rounded-xl bg-black/5 p-4 dark:bg-white/5">
+      <section className="flex flex-col gap-1 rounded-xl bg-primary/10 p-4 dark:bg-primary/15">
         <span className="text-base opacity-70">Calorías</span>
-        <span className="text-4xl font-semibold">
+        <span className="text-4xl font-semibold text-primary">
           {summary.totalCalories}
           {summary.goal && (
-            <span className="text-lg font-normal opacity-60"> / {summary.goal.calorieGoal}</span>
+            <span className="text-lg font-normal text-secondary"> / {summary.goal.calorieGoal}</span>
           )}
         </span>
       </section>
@@ -62,7 +95,7 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
                 <Fragment key={category}>
                   <tr>
                     <td colSpan={2} className="pt-3">
-                      <span className="inline-block rounded-full bg-black/10 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide dark:bg-white/10">
+                      <span className="inline-block rounded-full bg-secondary/15 px-2 py-0.5 text-xs font-semibold text-secondary uppercase tracking-wide">
                         {category}
                       </span>
                     </td>
@@ -117,7 +150,7 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
 
 export default function Home({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
   return (
-    <main className="mx-auto flex max-w-[480px] flex-col gap-6 p-4">
+    <main className="mx-auto flex w-full max-w-[480px] flex-col gap-6 p-4">
       <Suspense fallback={<p>Cargando…</p>}>
         <Summary searchParams={searchParams} />
       </Suspense>
