@@ -1,4 +1,5 @@
 import AddEntriesUseCase from './application/AddEntriesUseCase'
+import DeleteEntryUseCase from './application/DeleteEntryUseCase'
 import GetDailySummaryUseCase from './application/GetDailySummaryUseCase'
 import GetHistoryUseCase from './application/GetHistoryUseCase'
 import GetUserGoalUseCase from './application/GetUserGoalUseCase'
@@ -8,6 +9,10 @@ import UserGoalRepository from './infrastructure/userGoal/UserGoalRepository'
 
 export function buildAddEntriesUseCase(): AddEntriesUseCase {
   return new AddEntriesUseCase(new CalorieEntryRepository())
+}
+
+export function buildDeleteEntryUseCase(): DeleteEntryUseCase {
+  return new DeleteEntryUseCase(new CalorieEntryRepository())
 }
 
 export function buildGetDailySummaryUseCase(): GetDailySummaryUseCase {

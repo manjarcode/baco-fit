@@ -1,6 +1,7 @@
 import { Fragment, Suspense } from 'react'
 import Link from 'next/link'
 import { connection } from 'next/server'
+import { deleteEntryAction } from './actions'
 import { buildGetDailySummaryUseCase } from '../domain/composition'
 import CalorieEntry from '../domain/models/CalorieEntry'
 
@@ -114,7 +115,21 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
                         <span className="text-sm opacity-60">{entry.quantity}</span>
                       </td>
                       <td className="py-1.5 pl-3 align-top text-sm whitespace-nowrap text-right opacity-80">
-                        {entry.calories} kcal
+                        <span className="inline-flex items-center gap-2">
+                          {entry.calories} kcal
+                          <form action={deleteEntryAction}>
+                            <input type="hidden" name="date" value={entry.date} />
+                            <input type="hidden" name="category" value={entry.category} />
+                            <input type="hidden" name="id" value={entry.id} />
+                            <button
+                              type="submit"
+                              aria-label="Borrar entrada"
+                              className="rounded-full px-1 text-base opacity-50 hover:text-red-500 hover:opacity-100"
+                            >
+                              ✕
+                            </button>
+                          </form>
+                        </span>
                       </td>
                     </tr>
                   ))}

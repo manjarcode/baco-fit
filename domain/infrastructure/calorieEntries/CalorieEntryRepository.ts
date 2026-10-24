@@ -33,6 +33,10 @@ export default class CalorieEntryRepository {
     return data.map(this.toDomain)
   }
 
+  async delete(userId: string, date: string, category: string, id: string): Promise<void> {
+    await CalorieEntrySchema.delete({ userId, date, category, id }).go()
+  }
+
   private toRecord(entry: CalorieEntry) {
     return {
       userId: entry.userId,
