@@ -2,6 +2,7 @@ import { Fragment, Suspense } from 'react'
 import Link from 'next/link'
 import { connection } from 'next/server'
 import { deleteEntryAction } from './actions'
+import LowConfidenceWarning from './components/LowConfidenceWarning'
 import { buildGetDailySummaryUseCase } from '../domain/composition'
 import CalorieEntry from '../domain/models/CalorieEntry'
 
@@ -106,11 +107,7 @@ async function Summary({ searchParams }: { searchParams: Promise<{ date?: string
                       <td className="w-full py-1.5 pl-3 align-top text-base">
                         <span className="block">
                           {entry.name}
-                          {entry.confidence < 70 && (
-                            <span className="ml-1" title="Confianza baja">
-                              ⚠️
-                            </span>
-                          )}
+                          {entry.confidence < 90 && <LowConfidenceWarning foodName={entry.name} reason={entry.lowConfidenceReason}/>}
                         </span>
                         <span className="text-sm opacity-60">{entry.quantity}</span>
                       </td>
